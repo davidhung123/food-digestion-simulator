@@ -32,6 +32,15 @@
 
       <div id="foodGrid" class="food-grid"></div>
 
+      <div class="preset-section" aria-labelledby="presetTitle">
+        <div class="preset-heading">
+          <p class="step-label">快速開始</p>
+          <h3 id="presetTitle">一鍵載入預設餐點</h3>
+        </div>
+        <div id="presetGrid" class="preset-grid"></div>
+        <p class="fine-print">套用後仍可手動勾選或取消食物；調整後按下方按鈕重新模擬。</p>
+      </div>
+
       <div class="controls-stack">
         <label>
           份量
@@ -68,10 +77,26 @@
       </div>
 
       <div class="simulator-layout">
-        <div class="body-stage" id="bodyStage">
-          <img class="body-image" src="assets/digestive-system-zh-hant.svg" alt="人體消化系統示意圖" />
+        <div class="body-stage-wrap">
+          <div class="stage-scroll-controls">
+            <p class="stage-scroll-hint">↕ 可上下滾動查看完整消化器官與食物位置；超過半數食物下移時會自動跟隨</p>
+            <button id="autoFollowBtn" type="button" class="stage-follow-btn" aria-pressed="true">自動跟隨：開啟</button>
+          </div>
+          <div class="body-stage" id="bodyStage" tabindex="0" aria-label="可滾動查看完整人體消化器官與食物位置">
+            <div class="body-stage-canvas">
+              <img
+                id="bodyImage"
+                class="body-image"
+                src="assets/digestive-system-zh-hant.svg"
+                alt="人體消化系統示意圖"
+                loading="eager"
+                decoding="sync"
+                draggable="false"
+              />
 
-          <div id="foodParticles" class="food-particles" aria-live="polite"></div>
+              <div id="foodParticles" class="food-particles" aria-live="polite"></div>
+            </div>
+          </div>
         </div>
 
         <aside class="info-card" id="infoCard">
@@ -89,6 +114,7 @@
             <span>消化進度</span>
             <div class="progress-track"><div id="digestProgress" class="progress-fill"></div></div>
           </div>
+          <p id="focusWarning" class="status-warning" role="alert" hidden></p>
           <p id="scienceNote" class="science-note">先選擇食物，再開始模擬。</p>
         </aside>
       </div>
@@ -98,41 +124,81 @@
           <button id="playBtn" class="icon-btn" aria-label="播放">▶</button>
           <button id="prevBtn" class="icon-btn" aria-label="上一個階段">⏮</button>
           <button id="nextBtn" class="icon-btn" aria-label="下一個階段">⏭</button>
-          <label>
-            速度
-            <select id="speedSelect">
-              <option value="60">1×</option>
-              <option value="300" selected>5×</option>
-              <option value="900">15×</option>
-              <option value="3600">60×</option>
-            </select>
-          </label>
+          <div class="speed-control-group">
+            <label>
+              速度
+              <select id="speedSelect">
+                <option value="0.5">0.5×</option>
+                <option value="1" selected>1×</option>
+                <option value="5">5×</option>
+                <option value="15">15×</option>
+                <option value="60">60×</option>
+              </select>
+            </label>
+            <div class="flow-mode-controls" role="group" aria-label="時間流速模式">
+              <button id="flowModeFixedBtn" type="button" class="flow-mode-btn active" aria-pressed="true">全程固定</button>
+              <button id="flowModeSegmentedBtn" type="button" class="flow-mode-btn" aria-pressed="false">分段流速</button>
+            </div>
+          </div>
         </div>
         <input id="timeline" type="range" min="0" max="4320" value="0" step="1" aria-label="消化時間軸" />
-        <div class="timeline-marks">
-          <span>0 分</span><span>6 小時</span><span>12 小時</span><span>24 小時</span><span>48 小時</span><span>72 小時</span>
+        <div class="timeline-axis-scroll">
+          <div class="timeline-axis" aria-label="同一時間軸：前一小時每五分鐘，之後顯示六至七十二小時">
+            <div class="timeline-axis-segment timeline-axis-early">
+              <span>0</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span>
+              <span>30</span><span>35</span><span>40</span><span>45</span><span>50</span><span>55</span><span>60 分</span>
+            </div>
+            <div class="timeline-axis-segment timeline-axis-late">
+              <span>6 小時</span><span>12 小時</span><span>24 小時</span><span>48 小時</span><span>72 小時</span>
+            </div>
+          </div>
         </div>
+        <p id="speedNotice" class="speed-notice" role="status"></p>
+        <p id="timelineWarning" class="timeline-warning" role="status" hidden></p>
+        <p id="earlyEndNotice" class="early-end-notice" role="status" hidden></p>
       </div>
 
-      <div id="mealLegend" class="meal-legend"></div>
+      <div class="meal-legend-heading">
+        <span>目前餐點食物列表</span>
+        <span id="legendCount">尚未載入</span>
+      </div>
+      <div id="mealLegend" class="meal-legend" aria-label="目前餐點食物列表"></div>
+
+      <section class="history-section" aria-labelledby="historyTitle">
+        <div class="history-heading">
+          <span id="historyTitle">歷史紀錄</span>
+          <span id="historyCount" class="history-count">0 / 5</span>
+        </div>
+        <div id="mealHistory" class="meal-history" aria-live="polite"></div>
+      </section>
     </section>
   </main>
 
   <section class="learning-section">
     <div class="learning-card">
       <p class="step-label">觀察重點</p>
-      <h2>同一餐中的食物，不一定一起前進</h2>
-      <p>液體通常較快離開胃部；高脂肪、顆粒較大或較難消化的固體，往往會停留較久。蔬菜中的營養可被吸收，但部分纖維會進入大腸。</p>
+      <h2 id="observationTitle">同一餐中的食物，不一定一起前進</h2>
+      <p id="observationText">先選擇食物並開始模擬，再觀察不同食物在消化道中的速度差異。</p>
+      <ul id="observationFacts" class="observation-facts" aria-label="消化系統知識"></ul>
+      <div id="jokeSection" class="joke-section locked" role="status">
+        <strong>冷笑話專區</strong>
+        <p id="jokeText">🔒 先載入餐點並完成全部挑戰題，且至少答對 2 題，解鎖冷笑話彩蛋。</p>
+        <p id="jokeReason" class="joke-reason" hidden></p>
+        <button id="jokeReasonBtn" type="button" class="secondary" hidden>查看理由</button>
+      </div>
     </div>
     <div class="learning-card challenge-card">
       <p class="step-label">挑戰題</p>
-      <h2 id="challengeQuestion">水、米飯與牛排，誰通常最早離開胃？</h2>
-      <div class="challenge-options">
-        <button data-answer="water">水</button>
-        <button data-answer="rice">米飯</button>
-        <button data-answer="steak">牛排</button>
+      <h2>依目前餐點回答問題</h2>
+      <p id="challengeSummary" class="challenge-summary">請先選擇食物，再按「把食物放入消化道」開始挑戰題。</p>
+      <div id="challengeQuestions" class="challenge-questions" aria-live="polite"></div>
+      <div id="puzzleSection" class="puzzle-section locked" role="status">
+        <strong>食物解謎專區</strong>
+        <p id="puzzlePrompt">🔒 先載入餐點並完成全部挑戰題，解鎖食物解謎。</p>
+        <p id="puzzleHint" class="puzzle-hint" hidden></p>
+        <p id="puzzleAnswer" class="puzzle-answer" hidden></p>
+        <button id="puzzleRevealBtn" type="button" class="secondary" hidden>顯示解答</button>
       </div>
-      <p id="challengeFeedback" class="challenge-feedback"></p>
     </div>
   </section>
 
@@ -143,10 +209,14 @@
       <li>設定份量與咀嚼程度，再按「把食物放入消化道」。</li>
       <li>拖動時間軸，或按播放，查看每種食物在消化道中的位置。</li>
       <li>點選彩色食物粒子或下方圖例，查看個別食物狀態。</li>
+      <li>中央人體圖可上下滾動；歷史紀錄可點擊重新套用，移入或聚焦可查看完整食物。</li>
     </ol>
     <button id="closeTourBtn" class="primary">開始探索</button>
   </dialog>
 
+  <script src="question-bank.js"></script>
+  <script src="joke-bank.js"></script>
+  <script src="cold-joke-bank.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
